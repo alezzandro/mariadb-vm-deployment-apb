@@ -1,0 +1,34 @@
+- name: mariadb-deployment-apb playbook to provision the application
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  roles:
+  - role: ansible.kubernetes-modules
+    install_python_requirements: no
+  - role: ansibleplaybookbundle.asb-modules
+  - role: provision-mariadb-deployment-apb
+    playbook_debug: false
+  tasks:
+  - name: Adding the remote host to the inventory
+    add_host:
+      name: "{{ target_host }}"
+      groups: target_group
+    changed_when: false
+  - name: Adding ssh private key
+    shell: "mkdir -p /opt/apb/.ssh && chmod 700 /opt/apb/.ssh && echo -e \"{{ sshprivkey }}\" > /opt/apb/.ssh/id_rsa && chmod 600 /opt/apb/.ssh/id_rsa"
+
+- name: Provision mariadb
+  hosts: target_group
+  remote_user: "{{ remoteuser }}"
+  become: true
+  vars: 
+    firewall_allowed_tcp_ports:
+      - "22"
+      - "3306"
+    mariadb_bind_address: "0.0.0.0"
+    mariadb_root_password: "{{ rootpassword }}"
+    mariadb_databases:
+      - name: "{{ dbname }}"
+  roles:
+  - role: ansible-role-firewall
+  - role: ansible-role-mariadb
